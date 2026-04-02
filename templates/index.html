@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OS Process Manager Simulator</title>
+    <!-- Modern Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #11111b;
+            --bg-card: #1e1e2e;
+            --bg-card-hover: #313244;
+            --text-main: #cdd6f4;
+            --text-muted: #a6adc8;
+            --border: #313244;
+            
+            --blue: #89b4fa;
+            --red: #f38ba8;
+            --green: #a6e3a1;
+            --yellow: #f9e2af;
+            --mauve: #cba6f7;
+            --peach: #fab387;
+            --teal: #94e2d5;
+            --lavender: #b4befe;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1, h2, h3 { margin-top: 0; font-weight: 600; }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, var(--bg-card), #181825);
+            padding: 20px 30px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .header h1 {
+            background: -webkit-linear-gradient(45deg, var(--blue), var(--mauve));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .system-indicators {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .indicator {
+            background: var(--bg-base);
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .indicator span { color: var(--teal); font-variant-numeric: tabular-nums; }
+
+        .memory-wrapper {
+            width: 200px;
+            height: 20px;
+            background: var(--bg-base);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid var(--border);
+        }
+        .memory-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--blue), var(--teal));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .memory-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            white-space: nowrap;
+        }
+
+        .container {
+            display: flex;
+            gap: 24px;
+        }
+
+        .left-col {
+            width: 320px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .right-col {
+            flex-grow: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            color: var(--blue);
+        }
+
+        /* Forms and Inputs */
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 14px; color: var(--text-muted); }
+        
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            background: var(--bg-base);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-main);
+            outline: none;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        input:focus, select:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.2); }
+        
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 16px;
+        }
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn:active:not(:disabled) { transform: scale(0.97); }
+        .btn-primary { background: var(--blue); color: #111; }
+        .btn-primary:hover { background: #b4befe; }
+        .btn-secondary { background: var(--border); color: var(--text-main); }
+        .btn-secondary:hover { background: var(--bg-card-hover); }
+        .btn-danger { background: rgba(243, 139, 168, 0.1); color: var(--red); border: 1px solid rgba(243, 139, 168, 0.3); }
+        .btn-danger:hover { background: var(--red); color: #111; }
+
+        .btn-flex { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-flex .btn { flex: 1; min-width: 80px; }
+
+        /* Auto run active state */
+        .btn-auto-active { background: var(--teal) !important; color: #111 !important; box-shadow: 0 0 10px var(--teal); }
+
+        /* Table */
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        th { padding: 12px; background: rgba(255,255,255,0.02); color: var(--text-muted); font-weight: 500; border-bottom: 1px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+        
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge.new { background: #5c5f77; color: white; }
+        .badge.ready { background: rgba(137, 180, 250, 0.2); color: var(--blue); }
+        .badge.running { background: rgba(166, 227, 161, 0.2); color: var(--green); animation: pulse 1.5s infinite; }
+        .badge.waiting { background: rgba(249, 226, 175, 0.2); color: var(--yellow); }
+        .badge.terminated { background: rgba(243, 139, 168, 0.2); color: var(--red); }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(166, 227, 161, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(166, 227, 161, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(166, 227, 161, 0); }
+        }
+
+        /* Ready Queue */
+        .queue-container {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            min-height: 48px;
+            align-items: center;
+        }
+        .queue-item {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        .queue-item:hover { transform: translateY(-2px); }
+        .queue-item.first { border: 2px solid #fff; position: relative; }
+        .queue-item.first::after {
+            content: "NEXT";
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: var(--teal);
+            background: var(--bg-base);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        /* Gantt Chart */
+        .gantt-wrapper {
+            display: flex;
+            height: 40px;
+            background: var(--bg-base);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .gantt-block {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(0,0,0,0.7);
+            border-right: 1px solid rgba(0,0,0,0.1);
+            transition: flex-grow 0.2s linear;
+        }
+        .gantt-block:last-child { border-right: none; }
+        
+        /* Terminal Log */
+        .terminal {
+            background: #181825;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #a6adc8;
+        }
+        .terminal span.time { color: var(--mauve); }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-base); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>OS Process Manager Simulator</h1>
+        <div class="system-indicators">
+            <div class="indicator">
+                Time: <span id="clock-time">0</span> ms
+            </div>
+            <div class="indicator">
+                CPU: <span id="cpu-util">0.00</span>%
+            </div>
+            <div class="indicator">
+                RAM: 
+                <div class="memory-wrapper">
+                    <div class="memory-fill" id="memory-fill"></div>
+                    <span class="memory-text" id="memory-text">0 / 1024 MB</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- LEFT COLUMN -->
+        <div class="left-col">
+            <div class="card">
+                <h2>Control Panel</h2>
+                <div class="form-group">
+                    <label>Scheduling Algorithm</label>
+                    <select id="algorithm-select">
+                        <option value="FCFS">First Come First Served (FCFS)</option>
+                        <option value="SJF">Shortest Job First (SJF)</option>
+                        <option value="Round Robin">Round Robin (q=100ms)</option>
+                        <option value="Priority">Priority</option>
+                    </select>
+                </div>
+                <div class="btn-flex" style="margin-top: 20px;">
+                    <button id="btn-step" class="btn btn-primary">Step</button>
+                    <button id="btn-auto" class="btn btn-secondary">Auto Run</button>
+                    <button id="btn-reset" class="btn btn-danger">Reset</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Create Process</h2>
+                <div class="form-group">
+                    <input type="text" id="proc-name" placeholder="Name (e.g. Chrome)">
+                </div>
+                <div class="slider-group">
+                    <label>Priority: <span id="prio-val" style="color:var(--text-main);font-weight:bold;">5</span></label>
+                    <input type="range" id="proc-priority" min="1" max="10" value="5" oninput="document.getElementById('prio-val').innerText=this.value">
+                </div>
+                <div class="form-group">
+                    <input type="number" id="proc-burst" placeholder="Burst Time (ms)" value="1000" step="100">
+                </div>
+                <div class="form-group">
+                    <input type="number" id="proc-memory" placeholder="Memory (MB)" value="128" min="64" max="512">
+                </div>
+                <button id="btn-create" class="btn btn-primary" style="width: 100%;">Create Process</button>
+            </div>
+
+            <div class="card">
+                <h2>System Stats</h2>
+                <table style="font-size: 15px;">
+                    <tr><td style="padding:4px 0;border:none;">Total Processes:</td><td style="text-align:right;border:none;font-weight:bold;color:var(--text-main);" id="stat-created">0</td></tr>
+                    <tr><td style="padding:4px 0;border:none;">Completed:</td><td style="text-align:right;border:none;font-weight:bold;color:var(--green);" id="stat-completed">0</td></tr>
+                    <tr><td style="padding:4px 0;border:none;">Avg Wait Time:</td><td style="text-align:right;border:none;font-weight:bold;color:var(--yellow);" id="stat-wait">0 ms</td></tr>
+                    <tr><td style="padding:4px 0;border:none;">Avg Turnaround:</td><td style="text-align:right;border:none;font-weight:bold;color:var(--blue);" id="stat-turnaround">0 ms</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="right-col">
+            <div class="card">
+                <h2>Ready Queue</h2>
+                <div class="queue-container" id="ready-queue">
+                    <span style="color: var(--text-muted); font-size: 14px; font-style: italic;">Queue is empty</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Process Table</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>PID</th>
+                                <th>Name</th>
+                                <th>State</th>
+                                <th>Priority</th>
+                                <th>Burst</th>
+                                <th>Remain</th>
+                                <th>Wait</th>
+                                <th>Mem</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="process-table-body">
+                            <!-- rows injected via js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Execution Timeline (Gantt)</h2>
+                <div class="gantt-wrapper" id="gantt-chart">
+                    <!-- blocks injected via js -->
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 0;">
+                <h2>Activity Log</h2>
+                <div class="terminal" id="terminal-log">
+                    <!-- log lines -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        const API_URL = 'http://localhost:5000';
+        
+        let autoRunInterval = null;
+        let isAutoRunning = false;
+        
+        // Gantt Chart Local State
+        let ganttData = [];
+        const ganttColors = ['#f38ba8', '#a6e3a1', '#f9e2af', '#89b4fa', '#cba6f7', '#94e2d5', '#fab387', '#b4befe'];
+
+        function getColorForPid(pid) {
+            if (pid === -1 || pid === null) return '#313244';
+            return ganttColors[pid % ganttColors.length];
+        }
+
+        // Init
+        fetchState();
+
+        // Listeners
+        document.getElementById('btn-step').addEventListener('click', () => {
+            stepSimulation();
+        });
+
+        document.getElementById('btn-auto').addEventListener('click', () => {
+            isAutoRunning = !isAutoRunning;
+            const btn = document.getElementById('btn-auto');
+            if (isAutoRunning) {
+                btn.classList.add('btn-auto-active');
+                btn.innerText = 'Pause Run';
+                autoRunInterval = setInterval(() => {
+                    stepSimulation();
+                }, 500);
+            } else {
+                btn.classList.remove('btn-auto-active');
+                btn.innerText = 'Auto Run';
+                clearInterval(autoRunInterval);
+            }
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', async () => {
+            await fetch(`${API_URL}/reset`, { method: 'POST' });
+            ganttData = []; // clear local gantt state
+            if (isAutoRunning) document.getElementById('btn-auto').click(); // turn off
+            fetchState();
+        });
+
+        document.getElementById('algorithm-select').addEventListener('change', async (e) => {
+            await fetch(`${API_URL}/scheduler/algorithm`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ algorithm: e.target.value })
+            });
+            fetchState();
+        });
+
+        document.getElementById('btn-create').addEventListener('click', async () => {
+            const name = document.getElementById('proc-name').value;
+            const priority = document.getElementById('proc-priority').value;
+            const burst = document.getElementById('proc-burst').value;
+            const memory = document.getElementById('proc-memory').value;
+
+            try {
+                const res = await fetch(`${API_URL}/process/create`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, priority, burst_time: burst, memory })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(data.error || 'Error creating process');
+                } else {
+                    document.getElementById('proc-name').value = ''; // reset name
+                    fetchState();
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        });
+
+        async function killProcess(pid) {
+            await fetch(`${API_URL}/process/terminate/${pid}`, { method: 'POST' });
+            fetchState();
+        }
+
+        async function stepSimulation() {
+            try {
+                const res = await fetch(`${API_URL}/scheduler/step`, { method: 'POST' });
+                const data = await res.json();
+                updateUI(data, true);
+            } catch(e) {
+                console.error("Simulation step failed:", e);
+                if (isAutoRunning) document.getElementById('btn-auto').click(); // stop on error
+            }
+        }
+
+        async function fetchState() {
+            try {
+                const res = await fetch(`${API_URL}/state`);
+                const data = await res.json();
+                updateUI(data, false);
+            } catch(e) {
+                console.error("Failed to fetch state:", e);
+            }
+        }
+
+        function updateUI(data, wasStep) {
+            // Update Headers
+            document.getElementById('clock-time').innerText = data.time_ms;
+            document.getElementById('cpu-util').innerText = data.stats.cpu_utilization;
+            
+            // Memory Bar
+            const memPct = (data.stats.memory_used / data.stats.memory_limit) * 100;
+            document.getElementById('memory-fill').style.width = Math.min(memPct, 100) + '%';
+            document.getElementById('memory-text').innerText = `${data.stats.memory_used} / ${data.stats.memory_limit} MB`;
+            
+            if (memPct > 85) {
+                document.getElementById('memory-fill').style.background = 'var(--red)';
+            } else {
+                document.getElementById('memory-fill').style.background = 'linear-gradient(90deg, var(--blue), var(--teal))';
+            }
+
+            // Sync Dropdown (if changed externally or on initialize)
+            document.getElementById('algorithm-select').value = data.algorithm;
+
+            // Stats
+            document.getElementById('stat-created').innerText = data.stats.total_created;
+            document.getElementById('stat-completed').innerText = data.stats.completed;
+            document.getElementById('stat-wait').innerText = data.stats.avg_waiting + ' ms';
+            document.getElementById('stat-turnaround').innerText = data.stats.avg_turnaround + ' ms';
+
+            // Ready Queue
+            const rqEl = document.getElementById('ready-queue');
+            rqEl.innerHTML = '';
+            if (data.ready_queue.length === 0) {
+                rqEl.innerHTML = '<span style="color: var(--text-muted); font-size: 14px; font-style: italic;">Queue is empty</span>';
+            } else {
+                data.ready_queue.forEach((pid, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'queue-item' + (idx === 0 ? ' first' : '');
+                    div.innerText = 'P' + pid;
+                    div.style.background = getColorForPid(pid);
+                    div.style.color = '#111';
+                    rqEl.appendChild(div);
+                });
+            }
+
+            // Table
+            const tbody = document.getElementById('process-table-body');
+            tbody.innerHTML = '';
+            // sort processes by PID generally, or running first
+            const procs = data.processes.sort((a,b) => a.pid - b.pid);
+            
+            procs.forEach(p => {
+                const tr = document.createElement('tr');
+                
+                // badge class
+                let badgeClass = p.state.toLowerCase();
+                
+                tr.innerHTML = `
+                    <td><strong>P${p.pid}</strong></td>
+                    <td>${p.name}</td>
+                    <td><span class="badge ${badgeClass}">${p.state}</span></td>
+                    <td>${p.priority}</td>
+                    <td>${p.burst_time}</td>
+                    <td>${p.remaining_time}</td>
+                    <td>${p.waiting_time}</td>
+                    <td>${p.memory}</td>
+                    <td>
+                        <button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" 
+                            ${p.state === 'TERMINATED' ? 'disabled' : ''}
+                            onclick="killProcess(${p.pid})">
+                            Kill
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Gantt Logic (Only update Gantt if this UI update was a tick step)
+            if (wasStep) {
+                const pidToLog = data.running_pid !== null ? data.running_pid : -1;
+                
+                if (ganttData.length > 0 && ganttData[ganttData.length - 1].pid === pidToLog) {
+                    ganttData[ganttData.length - 1].ticks++;
+                } else {
+                    ganttData.push({ pid: pidToLog, ticks: 1 });
+                }
+                
+                // limit gantt data to last ~50 blocks so we don't overflow infinity
+                if (ganttData.length > 50) ganttData.shift();
+
+                renderGantt();
+            } else if (ganttData.length === 0) {
+                // Initialize empty gantt
+                document.getElementById('gantt-chart').innerHTML = '<div style="width:100%; display:flex; justify-content:center; align-items:center; color: var(--text-muted); font-size: 12px; font-style:italic;">Awaiting Execution...</div>';
+            }
+
+            // Logs
+            const logEl = document.getElementById('terminal-log');
+            logEl.innerHTML = data.logs.map(log => {
+                // log format: "[Tick 0001] Process 1 created."
+                const parts = log.match(/(\[Tick \d+\])(.*)/);
+                if (parts) {
+                    return `<div><span class="time">${parts[1]}</span>${parts[2]}</div>`;
+                }
+                return `<div>${log}</div>`;
+            }).join('');
+            
+            // Auto scroll log to bottom
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function renderGantt() {
+            const chart = document.getElementById('gantt-chart');
+            chart.innerHTML = '';
+            
+            if (ganttData.length === 0) return;
+
+            ganttData.forEach(block => {
+                const div = document.createElement('div');
+                div.className = 'gantt-block';
+                div.style.flexGrow = block.ticks;
+                div.style.backgroundColor = getColorForPid(block.pid);
+                
+                if (block.pid === -1) {
+                    div.innerText = 'IDLE';
+                    div.style.color = '#fff';
+                } else {
+                    div.innerText = 'P' + block.pid;
+                }
+                
+                chart.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
