@@ -332,9 +332,13 @@
                     <select id="algorithm-select">
                         <option value="FCFS">First Come First Served (FCFS)</option>
                         <option value="SJF">Shortest Job First (SJF)</option>
-                        <option value="Round Robin">Round Robin (q=100ms)</option>
+                        <option value="Round Robin">Round Robin</option>
                         <option value="Priority">Priority</option>
                     </select>
+                </div>
+                <div class="form-group" id="tq-group" style="display: none; margin-top: 10px;">
+                    <label>Time Quantum (ms)</label>
+                    <input type="number" id="time-quantum" value="100" min="10" step="10">
                 </div>
                 <div class="btn-flex" style="margin-top: 20px;">
                     <button id="btn-step" class="btn btn-primary">Step</button>
@@ -353,9 +357,11 @@
                     <input type="range" id="proc-priority" min="1" max="10" value="5" oninput="document.getElementById('prio-val').innerText=this.value">
                 </div>
                 <div class="form-group">
+                    <label>Burst Time (ms)</label>
                     <input type="number" id="proc-burst" placeholder="Burst Time (ms)" value="1000" step="100">
                 </div>
                 <div class="form-group">
+                    <label>Memory (MB)</label>
                     <input type="number" id="proc-memory" placeholder="Memory (MB)" value="128" min="64" max="512">
                 </div>
                 <button id="btn-create" class="btn btn-primary" style="width: 100%;">Create Process</button>
@@ -368,6 +374,7 @@
                     <tr><td style="padding:4px 0;border:none;">Completed:</td><td style="text-align:right;border:none;font-weight:bold;color:var(--green);" id="stat-completed">0</td></tr>
                     <tr><td style="padding:4px 0;border:none;">Avg Wait Time:</td><td style="text-align:right;border:none;font-weight:bold;color:var(--yellow);" id="stat-wait">0 ms</td></tr>
                     <tr><td style="padding:4px 0;border:none;">Avg Turnaround:</td><td style="text-align:right;border:none;font-weight:bold;color:var(--blue);" id="stat-turnaround">0 ms</td></tr>
+                    <tr><td style="padding:4px 0;border:none;">Throughput:</td><td style="text-align:right;border:none;font-weight:bold;color:var(--mauve);" id="stat-throughput">0 p/s</td></tr>
                 </table>
             </div>
         </div>
@@ -469,12 +476,26 @@
         });
 
         document.getElementById('algorithm-select').addEventListener('change', async (e) => {
+            const algo = e.target.value;
+            const quantum = document.getElementById('time-quantum').value;
             await fetch(`${API_URL}/scheduler/algorithm`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ algorithm: e.target.value })
+                body: JSON.stringify({ algorithm: algo, quantum: parseInt(quantum) })
             });
             fetchState();
+        });
+
+        document.getElementById('time-quantum').addEventListener('change', async (e) => {
+            if (document.getElementById('algorithm-select').value === 'Round Robin') {
+                const quantum = e.target.value;
+                await fetch(`${API_URL}/scheduler/algorithm`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ algorithm: 'Round Robin', quantum: parseInt(quantum) })
+                });
+                fetchState();
+            }
         });
 
         document.getElementById('btn-create').addEventListener('click', async () => {
@@ -545,12 +566,19 @@
 
             // Sync Dropdown (if changed externally or on initialize)
             document.getElementById('algorithm-select').value = data.algorithm;
+            if (data.algorithm === 'Round Robin') {
+                document.getElementById('tq-group').style.display = 'block';
+                if (data.quantum) document.getElementById('time-quantum').value = data.quantum;
+            } else {
+                document.getElementById('tq-group').style.display = 'none';
+            }
 
             // Stats
             document.getElementById('stat-created').innerText = data.stats.total_created;
             document.getElementById('stat-completed').innerText = data.stats.completed;
             document.getElementById('stat-wait').innerText = data.stats.avg_waiting + ' ms';
             document.getElementById('stat-turnaround').innerText = data.stats.avg_turnaround + ' ms';
+            document.getElementById('stat-throughput').innerText = data.stats.throughput + ' p/s';
 
             // Ready Queue
             const rqEl = document.getElementById('ready-queue');

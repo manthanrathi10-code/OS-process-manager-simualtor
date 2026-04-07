@@ -126,8 +126,10 @@ class OSManager:
             cpu_utilization = (total_cpu_time / total_time_ms) * 100
             if cpu_utilization > 100:
                 cpu_utilization = 100
+            throughput = completed / (total_time_ms / 1000)
         else:
             cpu_utilization = 0
+            throughput = 0
 
         return {
             "total_created": total_created,
@@ -135,6 +137,7 @@ class OSManager:
             "avg_waiting": round(avg_waiting, 2),
             "avg_turnaround": round(avg_turnaround, 2),
             "cpu_utilization": round(cpu_utilization, 2),
+            "throughput": round(throughput, 2),
             "memory_used": self.memory_used(),
             "memory_limit": self.memory_limit
         }
@@ -207,15 +210,20 @@ def scheduler_step():
 def set_algorithm():
     data = request.json
     algo = data.get("algorithm")
+    quantum = data.get("quantum")
     valid_algos = ["FCFS", "SJF", "Round Robin", "Priority"]
     if algo in valid_algos:
         os_manager.algorithm = algo
-        os_manager.log(f"Scheduling algorithm changed to {algo}.")
+        log_msg = f"Scheduling algorithm changed to {algo}."
         
         if algo == "Round Robin":
+            if quantum is not None:
+                os_manager.quantum = int(quantum)
+                log_msg = f"Scheduling algorithm changed to {algo} (q={os_manager.quantum}ms)."
             os_manager.current_quantum_used = 0
             
-        return jsonify({"message": f"Algorithm set to {algo}"}), 200
+        os_manager.log(log_msg)
+        return jsonify({"message": log_msg}), 200
     return jsonify({"error": "Invalid algorithm"}), 400
 
 @app.route("/state", methods=["GET"])
@@ -230,6 +238,7 @@ def get_state_impl():
         "tick": os_manager.tick_counter,
         "time_ms": os_manager.tick_counter * os_manager.tick_step_ms,
         "algorithm": os_manager.algorithm,
+        "quantum": os_manager.quantum,
         "processes": processes,
         "ready_queue": os_manager.ready_queue,
         "running_pid": os_manager.running_pid,
